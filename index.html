@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>점심 메뉴 투표</title>
+</head>
+<body>
+    <h1>점심 메뉴 투표</h1>
+    <div id="menu-buttons"></div>
+    <p id="message">아직 투표하지 않았습니다.</p>
+    <h2>현재 결과</h2>
+    <div id="results"></div>
+
+    <script>
+        const API_BASE = "YOUR_LAMBDA_FUNCTION_URL";
+        let menus = [];
+
+        async function loadMenus() {
+            const response = await fetch(API_BASE + "/menus");
+            const data = await response.json();
+
+            menus = data.menus.map(item => item.name);
+
+            const buttonArea = document.getElementById("menu-buttons");
+            buttonArea.innerHTML = "";
+
+            menus.forEach(menu => {
+                const button = document.createElement("button");
+                button.textContent = menu;
+                button.onclick = () => vote(menu);
+                buttonArea.appendChild(button);
+            });
+
+            await loadSummary();
+        }
+
+        async function vote(menu) {
+            const response = await fetch(API_BASE + "/vote", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({menu: menu})
+            });
+
+            const data = await response.json();
+            document.getElementById("message").textContent = data.message;
+            await loadSummary();
+        }
+
+        async function loadSummary() {
+            const response = await fetch(API_BASE + "/summary");
+            const data = await response.json();
+
+            const counts = {};
+            menus.forEach(menu => counts[menu] = 0);
+            data.result.forEach(row => counts[row.menu] = row.count);
+
+            const resultArea = document.getElementById("results");
+            resultArea.innerHTML = "";
+
+            menus.forEach(menu => {
+                const p = document.createElement("p");
+                p.textContent = menu + ": " + (counts[menu] || 0) + "표";
+                resultArea.appendChild(p);
+            });
+        }
+
+        loadMenus();
+    </script>
+</body>
+</html>
